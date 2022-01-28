@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
 
+const cors = require('cors')
+
 // routers
 const authRouter = require('./routes').authRouter;
 const courseRouter = require('./routes').courseRouter;
@@ -29,6 +31,11 @@ mongoose
 //   middleWare for what ?
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// cors
+app.use(cors())
+
+
 // or use body-parser instead?
 app.use('/api/user', authRouter);
 

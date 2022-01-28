@@ -28,7 +28,8 @@ router.post('/register', async (req, res) => {
   // 如果輸入經過joi驗證有錯誤
   const { error } = validationResult;
   if (error) {
-    return res.status(400).send(error.details[0].message);
+    res.status(400);
+    return res.send(error.details[0].message);
   }
 
   const { name, email, password, role } = req.body;
@@ -73,15 +74,15 @@ router.post('/login', async (req, res) => {
         return res.status(400).send(err);
       }
       if (isMatch) {
-        console.log('foundUser',foundUser)
+        console.log('foundUser', foundUser);
         const jwtObject = { _id: foundUser._id, email: foundUser.email };
-        console.log('jwtObject--->', jwtObject)
+        console.log('jwtObject--->', jwtObject);
         const token = jwt.sign(jwtObject, process.env.PASSPORT_SECRET);
         res
           .status(200)
           .send({ message: 'OK', token: 'JWT ' + token, foundUser });
       } else {
-        console.log(err, 'password wrong!');
+        console.log('password wrong!');
         res.status(401).send('wrong password');
       }
     });
