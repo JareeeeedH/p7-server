@@ -15,10 +15,10 @@ router.post('/', async (req, res) => {
   }
 
   // passport認證過, 會有req.user可以使用
-  // 註冊課程 
-  console.log(req.user.isStudent(),'Student?' );
+  // 註冊課程
+  console.log(req.user.isStudent(), 'Student?');
   console.log(req.user.isInstructor(), 'teacher?');
-  console.log('req.User----->',req.user);
+  console.log('req.User----->', req.user);
 
   if (req.user.isStudent()) {
     return res.status(400).send('student cant post new course');
@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
     title,
     description,
     price,
-    instructor: req.user._id //認證過的req.user的id綁定 
+    instructor: req.user._id, //###認證過的req.user的id綁定
   });
 
   try {
@@ -41,43 +41,58 @@ router.post('/', async (req, res) => {
 });
 
 // 所有課程
-router.get('/', async (req, res)=>{
+router.get('/', async (req, res) => {
+  console.log('get Courses');
 
-  console.log('get Courses')
-
-  try{
-      // courseModel有綁定, member的資料
-    const foundCourses = await Course.find({}).populate('instructor', ['name', 'email'])
-    res.send(foundCourses)
-  }catch(err){
-    res.status(500).send('course not found !')
+  try {
+    // courseModel有綁定, member的資料
+    const foundCourses = await Course.find({}).populate('instructor', [
+      'name',
+      'email',
+    ]);
+    res.send(foundCourses);
+  } catch (err) {
+    res.status(500).send('course not found !');
   }
-  
-})
+});
+
+// 依據instructor Id找到 這個講師的所有課程
+router.get('/instructor/:_instructorId', (req, res) => {
+  let instructorId = req.params._instructorId;
+  Course.find({ instructor: instructorId })
+    .populate('instructor', ['name', 'email'])
+    .then((foundCourse) => {
+      res.send(foundCourse);
+    })
+    .catch((error) => {
+      res.status(500).send('not found any Courses');
+    });
+});
 
 // 搜尋單筆課程
-router.get('/:_id', async(req, res)=>{
-
-  try{
+router.get('/:_id', async (req, res) => {
+  try {
     // 從路由取得參數
     const { _id } = req.params;
-    const foundCourses = await Course.findOne({_id}).populate('instructor', ['email'])
+    const foundCourses = await Course.findOne({ _id }).populate('instructor', [
+      'email',
+    ]);
 
-    console.log('foundCourses', foundCourses)
-    res.status(200).send(foundCourses)
+    console.log('foundCourses', foundCourses);
+    res.status(200).send(foundCourses);
+  } catch (err) {
+    res.status(500).send('course not found!');
   }
-  catch(err){
-    res.status(500).send('course not found!')
-  }
-})
+});
 
 // patch修改課程資料
-router.patch('/:_id', async(req, res)=>{
-
+router.patch('/:_id', async (req, res) => {
   // 驗證課程輸入是否有誤
   const validationResult = courseValidation(req.body);
-  let {error} = validationResult;
-  if(error){ return res.status(400).send(error) };
+  let { error } = validationResult;
+  if (error) {
+    return res.status(400).send(error);
+  }
 
   // 尋找是否有這個課程
   const { _id } = req.params;
@@ -86,58 +101,56 @@ router.patch('/:_id', async(req, res)=>{
   // Course.findOneAndUpdate({_id}, req.body).then((updatedData)=>{
   //   res.send({message:'updated', updatedData})
   // })
-  
-  // 如果課程存在, 用課程中綁定的註冊者id與 認證的user id是否一樣, #一樣是註冊的instructor才可以修改
-  if(foundCourse){
 
+  // 如果課程存在, 用課程中綁定的註冊者id與 認證的user id是否一樣, #一樣是註冊的instructor才可以修改
+  if (foundCourse) {
     // 查證兩個mongoDB的ObjectId是否一樣
-    if(foundCourse.instructor.equals(req.user._id)){
+    if (foundCourse.instructor.equals(req.user._id)) {
       Course.findOneAndUpdate({ _id }, req.body, {
-        new:true,
-        runValidators:true
-      }).then(((response)=>{
-        res.status(200).send({message:'updated!', response})
-      })).catch((error)=>{
-        return res.send(error)
+        new: true,
+        runValidators: true,
       })
+        .then((response) => {
+          res.status(200).send({ message: 'updated!', response });
+        })
+        .catch((error) => {
+          return res.send(error);
+        });
+    } else {
+      return res.send('only instructor cna revise it !');
     }
-    else{
-      return res.send('only instructor cna revise it !')
-    }
-  }
-  else{
-    return res.send('not found!')
+  } else {
+    return res.send('not found!');
   }
 
   // res.send(validationResult)
-})
+});
 
 // 刪除課程
 
-router.delete('/:_id', async(req, res)=>{
+router.delete('/:_id', async (req, res) => {
   const { _id } = req.params;
-  const foundCourse =  await Course.findOne({_id});
+  const foundCourse = await Course.findOne({ _id });
 
   // 如果有找到課程, 並且user == instructor
-  if(foundCourse){
+  if (foundCourse) {
     const isInstructor = foundCourse.instructor.equals(req.user._id);
 
     // 是instructor才可以刪除
-    if(isInstructor){
-      try{
-        let deletedCourse = await Course.findOneAndDelete({_id});
-        return res.status(200).send({message:'Deleted!', deletedCourse})
-      }catch(e){
+    if (isInstructor) {
+      try {
+        let deletedCourse = await Course.findOneAndDelete({ _id });
+        return res.status(200).send({ message: 'Deleted!', deletedCourse });
+      } catch (e) {
         res.status(400);
         return res.send(e);
       }
-    }
-    else{
-      return res.status(403).send('you cant delete this course')
+    } else {
+      return res.status(403).send('you cant delete this course');
     }
   }
 
-  return res.status(400).send('not found!')
-})
+  return res.status(400).send('not found!');
+});
 
 module.exports = router;
